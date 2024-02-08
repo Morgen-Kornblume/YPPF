@@ -27,35 +27,37 @@ def summary(request):  # 主页
     # page 0
     Sname = myinfo['Sname']
 
-    # page 1
+    # page 1, 总预约次数，总预约时长，相当于多少天
     all_appoint_num = 12649
     all_appoint_len = 19268.17
     all_appoint_len_day = round(all_appoint_len/24)
 
-    # page 2
+    # page 2， 个人预约地下室次数，预约次数排名， 预约时长，预约时长排名
     appoint_make_num = int(myinfo['appoint_make_num'])
     appoint_make_num_pct = myinfo['rank_num']
     appoint_make_hour = round(myinfo['appoint_make_hour'], 2)
     appoint_make_hour_pct = myinfo['rank_hour']
+    # 参加预约的次数，参加时长
     appoint_attend_num = int(myinfo['appoint_attend_num'])
     appoint_attend_hour = round(myinfo['appoint_attend_hour'], 2)
 
-    # page 3
+    # page 3， 最抢手的功能房， 第二、第三
     hottest_room_1 = ['B214', Rid_list['B214'], 1952]
     hottest_room_2 = ['B220', Rid_list['B220'], 1715]
     hottest_room_3 = ['B221', Rid_list['B221'], 1661]
 
-    # page 4
+    # page 4，个人最喜欢使用的房间， 使用次数
     Sfav_room_id = myinfo['favourite_room_id']
     if Sfav_room_id:
         Sfav_room_name = Rid_list[Sfav_room_id]
         Sfav_room_freq = int(myinfo['favourite_room_freq'])
 
-    # page 5
+    # page 5， 最喜欢在什么时候发起预约
     Smake_time_most = myinfo['make_time_most']
     if Smake_time_most:
         Smake_time_most = int(Smake_time_most)
-
+    
+    # 什么时候使用房间最频繁
     try:
         Suse_time_list = myinfo['use_time_list'].split(';')
     except:
@@ -65,17 +67,18 @@ def summary(request):  # 主页
         Suse_time_most = Suse_time_list.index(max(Suse_time_list))
     except:
         Suse_time_most = -1
+    # 使用时间房间的频率-时间柱状图
     Suse_time_list_js = json.dumps(Suse_time_list[6:])
     Suse_time_list_label = [str(i) for i in range(6, 24)]
     Suse_time_list_label_js = json.dumps(Suse_time_list_label)
 
-    # page 6
+    # page 6 今年第一次预约
     Sfirst_appoint = myinfo['first_appoint']
     if Sfirst_appoint:
         Sfirst_appoint = Sfirst_appoint.split('|')
         Sfirst_appoint.append(Rid_list[Sfirst_appoint[4]])
 
-    # page 7
+    # page 7 预约关键词
     Skeywords = myinfo['usage']
     if Skeywords:
         Skeywords = Skeywords.split('|')
@@ -86,7 +89,7 @@ def summary(request):  # 主页
     else:
         Skeywords_len = 0
 
-    # page 8
+    # page 8， 最常与你一起预约的小伙伴
     Sfriend = myinfo['friend']
     if Sfriend == '':
         Sfriend = None

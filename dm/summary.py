@@ -15,9 +15,10 @@ from Appointment.models import Appoint, CardCheckInfo, Room
 from Appointment.utils.identity import get_participant
 from Appointment.config import CONFIG
 
-SUMMARY_YEAR = 2021
-SUMMARY_SEM_START = datetime(2021, 9, 1)
-SUMMARY_SEM_END: datetime = CONFIG.semester_start
+SUMMARY_YEAR = 2023
+SUMMARY_SEMSTER = '秋'
+SUMMARY_SEM_START = datetime(2023, 2, 1)
+SUMMARY_SEM_END: datetime = datetime(2024, 1, 15)
 
 
 def remove_local_var(d: Dict[str, Any]):
@@ -71,10 +72,13 @@ __generics = None
 
 
 def cal_all_org():
+    # 学生小组总数量
     total_club_num = ModifyOrganization.objects.filter(
         otype__otype_name='学生小组', status=ModifyOrganization.Status.CONFIRMED).count()
+    # 书院课程总数量
     total_courseorg_num = Organization.objects.filter(
         otype__otype_name='书院课程').count()
+    # 活动总数量，注意这里是学年制
     total_act = Activity.objects.exclude(status__in=[
         Activity.Status.REVIEWING,
         Activity.Status.CANCELED,
@@ -82,6 +86,7 @@ def cal_all_org():
         Activity.Status.REJECT
     ]).filter(year=SUMMARY_YEAR)
     total_act_num = total_act.count()
+    # 总活动时长
     total_act_hour: timedelta = sum(
         [(a.end-a.start) for a in total_act], timedelta(0))
     total_act_hour = round(total_act_hour.total_seconds() / 3600, 2)
@@ -91,8 +96,10 @@ def cal_all_org():
 
 
 def cal_all_course():
+    # 总课程数量
     total_course_num = Course.objects.exclude(status=Course.Status.ABORT).filter(
         year=SUMMARY_YEAR).count()
+    # 总课程活动
     course_act = Activity.objects.exclude(status__in=[
         Activity.Status.REVIEWING,
         Activity.Status.CANCELED,
@@ -102,11 +109,13 @@ def cal_all_course():
         year=SUMMARY_YEAR, category=Activity.ActivityCategory.COURSE)
 
     total_course_act_num = len(course_act)
+    # 总课程活动时长&参与时长
     total_course_act_hour: timedelta = sum(
         [(a.end-a.start) for a in course_act], timedelta(0))
     total_course_act_hour = round(
         total_course_act_hour.total_seconds() / 3600, 2)
-
+    
+    # 参与课程次数
     persons = NaturalPerson.objects.annotate(cc=Count(
         'courseparticipant', filter=Q(
             courseparticipant__course__year=SUMMARY_YEAR,
@@ -271,7 +280,9 @@ def cal_course(np: NaturalPerson):
 
 
 def cal_study_room(np: NaturalPerson):
-
+    """
+    计算个人在自习室的刷卡次数、刷卡天数、最常去的自习室和对应的天数
+    """
     _start_time = SUMMARY_SEM_START
     _end_time = SUMMARY_SEM_END
 
@@ -279,7 +290,7 @@ def cal_study_room(np: NaturalPerson):
     _par = get_participant(_user)
     if _par is None:
         return {}
-
+    # 自习室刷卡次数
     _study_room_record_filter = Q(Cardroom__Rtitle__contains='自习',
                                   Cardtime__gt=_start_time,
                                   Cardtime__lt=_end_time,
@@ -290,9 +301,12 @@ def cal_study_room(np: NaturalPerson):
 
     if not _study_room_reords.exists():
         return dict(study_room_num=0)
+    # 个人总刷卡次数
     study_room_num = _study_room_reords.aggregate(cnt=Count('*')).get('cnt', 0)
+    # 个人刷卡的天数
     study_room_day = _study_room_reords.values_list('Cardtime__date').annotate(
         cnt=Count('*')).aggregate(cnt=Count('*')).get('cnt', 0)
+    # 个人最常去的自习室，和对应的天数
     _cnt_dict = defaultdict(int)
     for r, _, _ in _study_room_reords.values_list('Cardroom__Rid', 'Cardtime__date').annotate(cnt=Count('*')):
         _cnt_dict[r] += 1
@@ -306,7 +320,9 @@ def cal_study_room(np: NaturalPerson):
 
 
 def cal_early_room(np: NaturalPerson):
-
+    """
+    计算个人 上午6-8点到达地下室的次数，每年度最早到地下室的时间。
+    """
     _start_time = SUMMARY_SEM_START
     _end_time = SUMMARY_SEM_END
 
@@ -323,6 +339,7 @@ def cal_early_room(np: NaturalPerson):
     _room_reords = CardCheckInfo.objects.filter(_record_filter)
     if not _room_reords.exists():
         return dict(early_day_num=0)
+    
     early_day_num = _room_reords.values_list('Cardtime__date').annotate(
         cnt=Count('*')).aggregate(cnt=Count('*')).get('cnt', 0)
     if early_day_num:
@@ -332,7 +349,9 @@ def cal_early_room(np: NaturalPerson):
 
 
 def cal_late_room(np: NaturalPerson):
-
+    """
+    计算个人 凌晨23-5点在地下室的次数，有多少人在同一时期陪同，哪间自习室陪你到最晚。
+    """
     _start_time = SUMMARY_SEM_START
     _end_time = SUMMARY_SEM_END
 
@@ -371,7 +390,10 @@ def cal_late_room(np: NaturalPerson):
 
 
 def cal_appoint(np: NaturalPerson):
-
+    """
+    计算个人 研讨室的总预约次数，总预约时长，超过同学的百分比；预约时间最长的房间和小时数。哪一天预约次数最多。
+    功能房 同理
+    """
     _start_time = SUMMARY_SEM_START
     _end_time = SUMMARY_SEM_END
 
@@ -417,6 +439,9 @@ def cal_appoint(np: NaturalPerson):
 
 
 def cal_appoint_kw(np: NaturalPerson):
+    """
+    计算个人，年度预约关键词（最常出现的前三名）
+    """
     import jieba
 
     _start_time = SUMMARY_SEM_START
@@ -440,6 +465,9 @@ def cal_appoint_kw(np: NaturalPerson):
 
 
 def cal_co_appoint(np: NaturalPerson):
+    """
+    找到个人，预约的最大共同友友
+    """
     _start_time = SUMMARY_SEM_START
     _end_time = SUMMARY_SEM_END
 
