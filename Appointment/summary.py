@@ -640,16 +640,6 @@ def summary2025(request: HttpRequest):
     base_dir = 'static/Appointment/assets/summary_data/summary2025'
     logged_in = request.user.is_authenticated
     infos = {}
-
-    # 获取用户真实姓名
-    real_name = "访客"
-    if logged_in:
-        try:
-            from app.models import NaturalPerson
-            real_name = NaturalPerson.objects.get(person_id=request.user).name
-        except:
-            real_name = request.user.username
-
     if logged_in:
         username = request.session.get("NP", "")
         if username:
@@ -660,10 +650,34 @@ def summary2025(request: HttpRequest):
     user_cancel = request.GET.get('cancel') == 'true'
 
     infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
+    if not user_accept or not logged_in or user_cancel:
+        # 新生/不接受协议/未登录 展示样例
+        example_file = os.path.join(base_dir, 'template.json')
+        with open(example_file ,encoding='utf-8') as f:
+            template_data = json.load(f)
+            # template.json 结构是 {"2300000000": {...}}，需要提取第一个用户的数据
+            if template_data:
+                first_key = list(template_data.keys())[0]
+                infos.update(template_data[first_key])
+        if logged_in:
+            with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
+                user_data = json.load(f).get(request.user.username, {})
+                infos.update(home_Sname=user_data.get('Sname', ''))
+    else:
+        # 读取年度总结中该用户的个人数据
+        with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
+            user_data = json.load(f).get(request.user.username, {})
+            if user_data:
+                infos.update(user_data)
+            else:
+                # 用户不在数据中，使用模板
+                with open(os.path.join(base_dir, 'template.json'), 'r', encoding='utf-8') as tf:
+                    template_data = json.load(tf)
+                    if template_data:
+                        first_key = list(template_data.keys())[0]
+                        infos.update(template_data[first_key])
 
-    # 只要登录了且未显式取消，就优先加载该用户的真实数据
-    # 因为现在启动页和内容页在同一个模板中通过 fullpage.js 加载，必须一次性传完数据
-    show_real_data = logged_in and not user_cancel
+        infos.update(home_Sname=infos.get('Sname', infos.get('name', '')))
 
     if show_real_data:
         # 读取年度总结中该用户的个人数据
@@ -684,25 +698,12 @@ def summary2025(request: HttpRequest):
             rank_data = json.load(f).get(request.user.username, {})
             if rank_data:
                 infos.update(rank_data)
-
-        # 处理姓名显示逻辑
-        display_name = infos.get('Sname') or infos.get('name') or real_name
-        if display_name == "虚拟人":
-            display_name = real_name
-
-        infos.update(home_Sname=display_name)
-        if not infos.get('name') or infos.get('name') == "虚拟人":
-            infos['name'] = display_name
-        if not infos.get('Sname') or infos.get('Sname') == "虚拟人":
-            infos['Sname'] = display_name
-    else:
-        # 未登录或显式取消：展示样例
-        with open(os.path.join(base_dir, 'template.json'), 'r', encoding='utf-8') as f:
-            template_data = json.load(f)
-            if template_data:
-                first_key = list(template_data.keys())[0]
-                infos.update(template_data[first_key])
-        infos.update(home_Sname=real_name)
+                print(f"[DEBUG] 用户 {request.user.username} 的排名数据加载成功")
+                print(
+                    f"[DEBUG] personal_most_frequent_co_appoint: {rank_data.get('personal_most_frequent_co_appoint')}")
+            else:
+                print(
+                    f"[DEBUG] 用户 {request.user.username} 不在 rank2025.json 中，将使用模板默认值")
     
     # 读取年度总结中所有用户的总体数据
     with open(os.path.join(base_dir, 'summary_overall_2025.json'), 'r', encoding='utf-8') as f:
