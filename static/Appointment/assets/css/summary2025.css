@@ -305,7 +305,7 @@ button {
     }
 }
 
-/* P1: 首页样式 - 诗意文案 */
+/* 全局数据样式 - 所有number, name, room, date, yppf, org等强调类 */
 [class*="-number"],
 [class*="-name"],
 [class*="-room"],

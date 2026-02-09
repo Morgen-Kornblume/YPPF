@@ -43,6 +43,16 @@ $(document).ready(function () {
   // 检查复选框状态，控制按钮是否可用
   const splashButton = document.getElementById('splash-start-btn');
   const agreeCheckbox = document.getElementById('agree-rule');
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasAccepted = urlParams.get('accept') === 'true';
+
+  if (hasAccepted && agreeCheckbox) {
+    agreeCheckbox.checked = true;
+    if (splashButton) {
+      splashButton.classList.add('active');
+    }
+    isAgreed = true;
+  }
 
   // 复选框状态改变时更新按钮样式
   agreeCheckbox.addEventListener('change', function () {
@@ -60,6 +70,14 @@ $(document).ready(function () {
   splashButton.addEventListener('click', function () {
     if (agreeCheckbox.checked) {
       isAgreed = true;
+
+      if (!hasAccepted) {
+        const nextParams = new URLSearchParams(window.location.search);
+        nextParams.set('accept', 'true');
+        nextParams.delete('cancel');
+        window.location.search = nextParams.toString();
+        return;
+      }
 
       // 播放音乐
       audio.play();
