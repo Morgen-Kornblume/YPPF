@@ -71,12 +71,13 @@ $(document).ready(function () {
     if (agreeCheckbox.checked) {
       isAgreed = true;
 
+      // 更新URL状态但不刷新页面
       if (!hasAccepted) {
         const nextParams = new URLSearchParams(window.location.search);
         nextParams.set('accept', 'true');
         nextParams.delete('cancel');
-        window.location.search = nextParams.toString();
-        return;
+        const newUrl = window.location.pathname + '?' + nextParams.toString();
+        window.history.replaceState({}, '', newUrl);
       }
 
       // 播放音乐
