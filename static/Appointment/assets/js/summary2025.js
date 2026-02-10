@@ -50,6 +50,10 @@ $(document).ready(function () {
     agreeCheckbox.checked = true;
     if (splashButton) {
       splashButton.classList.add('active');
+      // 自动点击开启旅程
+      setTimeout(() => {
+        splashButton.click();
+      }, 500);
     }
     isAgreed = true;
   }
@@ -71,11 +75,10 @@ $(document).ready(function () {
     if (agreeCheckbox.checked) {
       isAgreed = true;
 
-      // 更新URL状态但不刷新页面
       if (!hasAccepted) {
         const nextParams = new URLSearchParams(window.location.search);
-        nextParams.set('accept', 'true');
-        nextParams.delete('cancel');
+        nextParams.set("accept", "true");
+        nextParams.delete("cancel");
         const newUrl = window.location.pathname + '?' + nextParams.toString();
         window.history.replaceState({}, '', newUrl);
       }
